@@ -15,3 +15,10 @@ jobs:
       run: sudo apt-get install -y libgmp3-dev
     - name: make
       run: make poop.c -lgmp -o poop
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: poop
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
