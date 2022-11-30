@@ -50,7 +50,7 @@ jobs:
       - name: Tar the release
         if: ${{ env.VERSION_TAGGED == 'false' }}
         run: | 
-          tar -czvf dist/💩-${{ env.VERSION }}-${{ env.ARCH }}.tar.gz dist/poop
+          tar -czvf dist/poop-${{ env.VERSION }}-${{ env.ARCH }}.tar.gz dist/poop
 
       - name: Configure Git
         if: ${{ env.VERSION_TAGGED == 'false' }}
