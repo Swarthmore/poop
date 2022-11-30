@@ -1,24 +1,66 @@
 name: Build and Release 
 
-on:
+on: 
   push:
-    branches: [ "main" ]
+    branches: [ 'main' ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ 'main' ]
 
 jobs:
-  build:
+  BuildAndRelease:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Install xmllint
-      run: sudo apt-get install -y libgmp3-dev
-    - name: make
-      run: make poop.c -lgmp -o poop
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: poop
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v2
+
+      - name: Fetch tags
+        run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+
+      - name: Get the version number
+        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
+      - name: Check if the version has a tag
+        run: |
+          if [[ $(git tag -l ${{ env.VERSION }}) ]]; then
+            echo "VERSION_TAGGED=true" >> $GITHUB_ENV
+          else
+            echo "VERSION_TAGGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgmp3-dev
+      
+      - name: Echo VERSION_TAGGED
+        run: echo ${{ env.VERSION_TAGGED }}
+
+      - name: Create dist folder
+        if: ${{ env.VERSION_TAGGED == 'false' }}
+        run: mkdir -p dist
+        
+      - name: Get the OS architecture
+        if: ${{ env.VERSION_TAGGED == 'false' }}
+        id: get_arch
+        run: echo "ARCH=x86_$(getconf LONG_BIT)" >> $GITHUB_ENV
+
+      - name: Build the binary 
+        if: ${{ env.VERSION_TAGGED == 'false' }}
+        run: gcc src/poop.c -lgmp -o dist/poop
+
+      - name: Tar the release
+        if: ${{ env.VERSION_TAGGED == 'false' }}
+        run: | 
+          tar -czvf dist/💩-${{ env.VERSION }}-${{ env.ARCH }}.tar.gz dist/poop
+
+      - name: Configure Git
+        if: ${{ env.VERSION_TAGGED == 'false' }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "noreply@github.com"
+
+      - name: Create the release
+        if: ${{ env.VERSION_TAGGED == 'false' }}
+        run: |
+          gh release create ${{ env.VERSION }} ./dist/*.tar.gz --generate-notes 
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN}}
